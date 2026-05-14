@@ -1,0 +1,123 @@
+import type { Persona, MockEmail } from './types'
+
+export const PERSONAS: Persona[] = [
+  {
+    key: 'powerUser',
+    label: 'Email Power User',
+    description: 'Fast triage, dense information, keyboard-friendly checklist.',
+    config: {
+      layout: 'tasklist',
+      primaryColor: '#2563eb',
+      widgets: ['quick-reply', 'filters', 'bulk-actions', 'search'],
+      density: 'compact',
+    },
+  },
+  {
+    key: 'student',
+    label: 'Student',
+    description: 'Calm calendar view grouped by day, easy to navigate.',
+    config: {
+      layout: 'calendar',
+      primaryColor: '#16a34a',
+      widgets: ['reminders', 'due-dates', 'categories'],
+      density: 'comfortable',
+    },
+  },
+  {
+    key: 'developer',
+    label: 'Developer',
+    description: 'Kanban board by status — move emails through a workflow.',
+    config: {
+      layout: 'kanban',
+      primaryColor: '#7c3aed',
+      widgets: ['labels', 'integrations', 'snippets', 'filters'],
+      density: 'compact',
+    },
+  },
+  {
+    key: 'executive',
+    label: 'Executive',
+    description: 'High-level dashboard with stats and only the most important messages.',
+    config: {
+      layout: 'dashboard',
+      primaryColor: '#b45309',
+      widgets: ['summary-stats', 'high-priority', 'recent'],
+      density: 'spacious',
+    },
+  },
+]
+
+export const MOCK_EMAILS: MockEmail[] = [
+  {
+    id: '1',
+    subject: 'Q2 Budget Review — Action Required',
+    from: 'finance@acme.com',
+    date: '2026-05-05T09:00:00Z',
+    status: 'unread',
+    priority: 'high',
+    preview: 'Please review and approve the attached Q2 budget projections before EOD Friday.',
+  },
+  {
+    id: '2',
+    subject: 'Team standup notes — May 5',
+    from: 'bot@standupapp.io',
+    date: '2026-05-05T08:30:00Z',
+    status: 'read',
+    priority: 'normal',
+    preview: 'Here are today\'s standup responses from the engineering team...',
+  },
+  {
+    id: '3',
+    subject: 'PR Review: feat/dynamic-ui merged',
+    from: 'github@notifications.com',
+    date: '2026-05-04T17:45:00Z',
+    status: 'read',
+    priority: 'normal',
+    preview: 'erolkaras merged pull request #142 into main. All checks passed.',
+  },
+  {
+    id: '4',
+    subject: 'Security advisory: rotate API keys',
+    from: 'security@company.com',
+    date: '2026-05-04T14:00:00Z',
+    status: 'unread',
+    priority: 'high',
+    preview: 'Our security team has detected anomalous access patterns. Rotate all API keys immediately.',
+  },
+  {
+    id: '5',
+    subject: 'Assignment 3 feedback',
+    from: 'prof.zhang@university.edu',
+    date: '2026-05-04T11:20:00Z',
+    status: 'replied',
+    priority: 'high',
+    preview: 'Great work on the systems design. See inline comments for suggestions on scaling.',
+  },
+  {
+    id: '6',
+    subject: 'Weekly product newsletter',
+    from: 'newsletter@producthunt.com',
+    date: '2026-05-03T10:00:00Z',
+    status: 'archived',
+    priority: 'low',
+    preview: 'Top launches this week: AI coding tools, a new calendar app, and more.',
+  },
+  {
+    id: '7',
+    subject: 'Investor update — April 2026',
+    from: 'ceo@acme.com',
+    date: '2026-05-03T09:00:00Z',
+    status: 'read',
+    priority: 'high',
+    preview: 'April was a strong month. ARR hit $2.4M, up 18% MoM. Details inside.',
+  },
+  {
+    id: '8',
+    subject: 'Lunch on Thursday?',
+    from: 'alex@colleague.com',
+    date: '2026-05-02T15:30:00Z',
+    status: 'replied',
+    priority: 'low',
+    preview: 'Hey! Are you free for lunch Thursday around 12:30?',
+  },
+]
