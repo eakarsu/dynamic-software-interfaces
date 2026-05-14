@@ -19,6 +19,14 @@ app.use('/api/utility', require('./routes/utility'));
 app.use('/api/admin', require('./routes/sample_data'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
+// Deep features (2026-05-14): Dynamic Software Interfaces
+app.use('/api/intent-graph', require('./routes/intent_graph'));
+app.use('/api/component-registry', require('./routes/component_registry'));
+app.use('/api/layout-variants', require('./routes/layout_variants'));
+app.use('/api/ui-generation-runs', require('./routes/ui_generation_runs'));
+app.use('/api/intent-classifier', require('./routes/intent_classifier'));
+app.use('/api/design-tokens', require('./routes/design_tokens'));
+
 app.use('/api/gap-ai-feedback-clustering', require('./routes/gap-ai-feedback-clustering'));
 app.use('/api/gap-ai-session-replay-summarizer', require('./routes/gap-ai-session-replay-summarizer'));
 app.use('/api/gap-ai-agent-customizer', require('./routes/gap-ai-agent-customizer'));
