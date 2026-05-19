@@ -17,6 +17,7 @@ import LayoutVariantsPage from './pages/LayoutVariantsPage';
 import UIGenerationRunsPage from './pages/UIGenerationRunsPage';
 import IntentClassifierPage from './pages/IntentClassifierPage';
 import DesignTokensPage from './pages/DesignTokensPage';
+import CustomViewsPage from './pages/CustomViewsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   return localStorage.getItem('token') ? <>{children}</> : <Navigate to="/login" replace />;
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="/ui-generation-runs" element={<UIGenerationRunsPage />} />
                 <Route path="/intent-classifier" element={<IntentClassifierPage />} />
                 <Route path="/design-tokens" element={<DesignTokensPage />} />
+                <Route path="/custom-views" element={<CustomViewsPage />} />
               </Routes>
             </Layout>
           </PrivateRoute>

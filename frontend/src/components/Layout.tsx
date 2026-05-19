@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Layers, Users, LayoutTemplate, PuzzleIcon, Clock, Settings, MessageSquare, Sparkles, LogOut, Wrench, Database, LayoutDashboard, GitBranch, Boxes, Beaker, Brain, Palette } from 'lucide-react';
+import { Layers, Users, LayoutTemplate, PuzzleIcon, Clock, Settings, MessageSquare, Sparkles, LogOut, Wrench, Database, LayoutDashboard, GitBranch, Boxes, Beaker, Brain, Palette, Eye } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,6 +17,7 @@ const navItems = [
   { path: '/feedback', label: 'Feedback', icon: MessageSquare },
   { path: '/utility', label: 'Utilities', icon: Wrench },
   { path: '/sample-data', label: 'Sample Data', icon: Database },
+  { path: '/custom-views', label: 'DSI Views', icon: Eye },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

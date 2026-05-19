@@ -43,6 +43,17 @@ app.use('/api/cf-primitives-marketplace', require('./routes/cf-primitives-market
 app.use('/api/cf-cross-app-portable', require('./routes/cf-cross-app-portable'));
 app.use('/api/cf-live-spec-compile', require('./routes/cf-live-spec-compile'));
 app.use('/api/cf-a11y-by-construction', require('./routes/cf-a11y-by-construction'));
+
+// Custom Views (DSI) — must be mounted BEFORE 404 / error handler.
+app.use('/api/custom-views', require('./routes/customViews'));
+
+app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'dynamic-software-interfaces' }));
+
+app.use((req, res, next) => {
+  if (res.headersSent) return next();
+  res.status(404).json({ error: 'Not Found', path: req.path });
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message });
