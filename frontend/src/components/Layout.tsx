@@ -1,8 +1,14 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Layers, Users, LayoutTemplate, PuzzleIcon, Clock, Settings, MessageSquare, Sparkles, LogOut, Wrench, Database, LayoutDashboard } from 'lucide-react';
+import { Layers, Users, LayoutTemplate, PuzzleIcon, Clock, Settings, MessageSquare, Sparkles, LogOut, Wrench, Database, LayoutDashboard, GitBranch, Boxes, Beaker, Brain, Palette, Eye } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/intent-graph', label: 'Intent Graph', icon: GitBranch },
+  { path: '/component-registry', label: 'Components', icon: Boxes },
+  { path: '/design-tokens', label: 'Design Tokens', icon: Palette },
+  { path: '/layout-variants', label: 'Layout Variants', icon: Beaker },
+  { path: '/ui-generation-runs', label: 'UI Generations', icon: Sparkles },
+  { path: '/intent-classifier', label: 'Intent Classifier', icon: Brain },
   { path: '/ui-users', label: 'Interface Users', icon: Users },
   { path: '/templates', label: 'Templates', icon: LayoutTemplate },
   { path: '/widgets', label: 'Widgets', icon: PuzzleIcon },
@@ -11,6 +17,7 @@ const navItems = [
   { path: '/feedback', label: 'Feedback', icon: MessageSquare },
   { path: '/utility', label: 'Utilities', icon: Wrench },
   { path: '/sample-data', label: 'Sample Data', icon: Database },
+  { path: '/custom-views', label: 'DSI Views', icon: Eye },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
