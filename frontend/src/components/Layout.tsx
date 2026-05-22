@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Layers, Users, LayoutTemplate, PuzzleIcon, Clock, Settings, MessageSquare, Sparkles, LogOut, Wrench, Database, LayoutDashboard, GitBranch, Boxes, Beaker, Brain, Palette, Eye } from 'lucide-react';
+import { Layers, Users, LayoutTemplate, PuzzleIcon, Clock, Settings, MessageSquare, Sparkles, LogOut, Wrench, Database, LayoutDashboard, GitBranch, Boxes, Beaker, Brain, Palette, Eye, MessagesSquare, PlayCircle, Bot, Camera, Languages, Workflow, Store, History, Server, BarChart3, Moon, Repeat, Package, Share2, Code2, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -18,6 +18,29 @@ const navItems = [
   { path: '/utility', label: 'Utilities', icon: Wrench },
   { path: '/sample-data', label: 'Sample Data', icon: Database },
   { path: '/custom-views', label: 'DSI Views', icon: Eye },
+  { path: '/adaptation-conflict', label: 'Adaptation Conflicts', icon: SlidersHorizontal },
+];
+
+const gapItems = [
+  { path: '/gap/feedback-clustering', label: 'Feedback Clusters', icon: MessagesSquare },
+  { path: '/gap/session-replay-summarizer', label: 'Replay Summarizer', icon: PlayCircle },
+  { path: '/gap/agent-customizer', label: 'Agent Customizer', icon: Bot },
+  { path: '/gap/screenshot-extractor', label: 'Screenshot Extract', icon: Camera },
+  { path: '/gap/i18n-translator', label: 'i18n Translator', icon: Languages },
+  { path: '/gap/multi-app-workspace', label: 'Multi-App Workspace', icon: Workflow },
+  { path: '/gap/widget-marketplace', label: 'Widget Marketplace', icon: Store },
+  { path: '/gap/customization-versioning', label: 'Version History', icon: History },
+  { path: '/gap/render-endpoint', label: 'Render Endpoint', icon: Server },
+  { path: '/gap/analytics-events', label: 'Analytics Events', icon: BarChart3 },
+  { path: '/gap/theme-toggle', label: 'Theme Toggle', icon: Moon },
+];
+
+const cfItems = [
+  { path: '/cf/fda-loop', label: 'FDA Loop', icon: Repeat },
+  { path: '/cf/primitives-marketplace', label: 'Primitives Market', icon: Package },
+  { path: '/cf/cross-app-portable', label: 'Cross-App Profile', icon: Share2 },
+  { path: '/cf/live-spec-compile', label: 'Live Spec Compile', icon: Code2 },
+  { path: '/cf/a11y-by-construction', label: 'A11y By Default', icon: ShieldCheck },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -61,6 +84,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               }`}>
               <Sparkles size={18} />AI Center
             </Link>
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Gap Features</p>
+            {gapItems.map(({ path, label, icon: Icon }) => (
+              <Link key={path} to={path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === path ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}>
+                <Icon size={18} />{label}
+              </Link>
+            ))}
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Custom Features</p>
+            {cfItems.map(({ path, label, icon: Icon }) => (
+              <Link key={path} to={path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === path ? 'bg-amber-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}>
+                <Icon size={18} />{label}
+              </Link>
+            ))}
           </div>
         </nav>
         <div className="p-4 border-t border-gray-800">

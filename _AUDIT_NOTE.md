@@ -102,3 +102,20 @@ Consolidated the two parallel sidebar AI entries (`/ai` AICenter + `/ai-plus` AI
 Smoke test (port 3007): `vite build` clean (1487 modules, 267 KB gzipped JS); `tsc --noEmit` reports only pre-existing unrelated errors in `PersonaSelector` / `PersonalizedInterface` / `SettingsPanel`; backend up, login `admin@demo.com / demo123` → **200**; port released, build artifacts cleaned. No deps added, no `npm install`.
 
 Log: `/Users/erolakarsu/projects/_AUDIT/apply3_logs/merge_ai_dynamic-software-interfaces.md`
+
+## Apply pass 7 (full backlog implementation)
+
+The remaining unaddressed backlog (per audit batch_extras.md §8) was a wiring gap: backend `gap-*` and `cf-*` routes (11 Gap + 5 Cf) were mounted in `server.js` and their corresponding pages existed on disk (`frontend/src/pages/Gap*.tsx`, `Cf*.tsx`), but none were routed in `App.tsx` or linked from the sidebar — so they were unreachable from the UI.
+
+Implemented:
+- `frontend/src/App.tsx`: added 16 imports + 16 `<Route>` entries under `/gap/*` and `/cf/*` paths (e.g. `/gap/feedback-clustering`, `/cf/fda-loop`).
+- `frontend/src/components/Layout.tsx`: added two new sidebar sections `Gap Features` (11 links, emerald accent) and `Custom Features` (5 links, amber accent), each with appropriate `lucide-react` icons (all already in the package).
+
+Backend routes wired (already mounted, now reachable):
+- AI Gap: `/api/gap-ai-feedback-clustering`, `/api/gap-ai-session-replay-summarizer`, `/api/gap-ai-agent-customizer`, `/api/gap-ai-screenshot-extractor`, `/api/gap-ai-i18n-translator`.
+- Non-AI Gap: `/api/gap-nonai-multi-app-workspace`, `/api/gap-nonai-widget-marketplace`, `/api/gap-nonai-customization-versioning`, `/api/gap-nonai-render-endpoint`, `/api/gap-nonai-analytics-events`, `/api/gap-nonai-theme-toggle`.
+- Custom Features: `/api/cf-fda-loop`, `/api/cf-primitives-marketplace`, `/api/cf-cross-app-portable`, `/api/cf-live-spec-compile`, `/api/cf-a11y-by-construction`.
+
+Tables: every gap/cf route uses `CREATE TABLE IF NOT EXISTS gap_features (...)` at first call — idempotent, no migration needed.
+
+`node --check backend/server.js` → OK. No new deps, no breaking changes; existing routes/pages untouched. Mounts remain before the 404 handler.

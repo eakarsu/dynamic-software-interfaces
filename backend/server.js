@@ -46,6 +46,7 @@ app.use('/api/cf-a11y-by-construction', require('./routes/cf-a11y-by-constructio
 
 // Custom Views (DSI) — must be mounted BEFORE 404 / error handler.
 app.use('/api/custom-views', require('./routes/customViews'));
+app.use('/api/adaptation-conflict', require('./routes/adaptationConflict'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'dynamic-software-interfaces' }));
 
