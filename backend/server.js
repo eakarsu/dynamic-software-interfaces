@@ -1,64 +1,54 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+require('dotenv').config({ path: require('path').join(__dirname, '../.env'), quiet: true });
 const express = require('express');
 const cors = require('cors');
-const app = express();
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const pool = require('./db');
+const path = require('node:path');
+const { verifyToken } = require('./middleware/auth');
 
-app.use(cors());
-app.use(express.json());
+const app = express();
+app.disable('x-powered-by');
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors({ origin(origin, callback) {
+  const allowed = process.env.FRONTEND_ORIGIN;
+  if (!origin || origin === allowed) return callback(null, true);
+  callback(new Error('Origin not allowed'));
+}, credentials: true, methods: ['GET', 'POST', 'PATCH', 'DELETE'] }));
+app.use(express.json({ limit: '256kb', type: 'application/json' }));
+app.use(cookieParser());
+app.use((req, res, next) => {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const origin = req.get('origin');
+  if (origin && origin !== process.env.FRONTEND_ORIGIN) return res.status(403).json({ error: 'Origin rejected' });
+  next();
+});
 
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/ai', require('./routes/ai'));
-app.use('/api/ai', require('./routes/ai_extra'));
-app.use('/api/ui-users', require('./routes/ui_users'));
-app.use('/api/templates', require('./routes/templates'));
-app.use('/api/widgets', require('./routes/widgets'));
-app.use('/api/sessions', require('./routes/sessions'));
-app.use('/api/customizations', require('./routes/customizations'));
-app.use('/api/feedback', require('./routes/feedback'));
-app.use('/api/utility', require('./routes/utility'));
-app.use('/api/admin', require('./routes/sample_data'));
-app.use('/api/dashboard', require('./routes/dashboard'));
-
-// Deep features (2026-05-14): Dynamic Software Interfaces
-app.use('/api/intent-graph', require('./routes/intent_graph'));
-app.use('/api/component-registry', require('./routes/component_registry'));
-app.use('/api/layout-variants', require('./routes/layout_variants'));
-app.use('/api/ui-generation-runs', require('./routes/ui_generation_runs'));
-app.use('/api/intent-classifier', require('./routes/intent_classifier'));
-app.use('/api/design-tokens', require('./routes/design_tokens'));
-
-app.use('/api/gap-ai-feedback-clustering', require('./routes/gap-ai-feedback-clustering'));
-app.use('/api/gap-ai-session-replay-summarizer', require('./routes/gap-ai-session-replay-summarizer'));
-app.use('/api/gap-ai-agent-customizer', require('./routes/gap-ai-agent-customizer'));
-app.use('/api/gap-ai-screenshot-extractor', require('./routes/gap-ai-screenshot-extractor'));
-app.use('/api/gap-ai-i18n-translator', require('./routes/gap-ai-i18n-translator'));
-app.use('/api/gap-nonai-multi-app-workspace', require('./routes/gap-nonai-multi-app-workspace'));
-app.use('/api/gap-nonai-widget-marketplace', require('./routes/gap-nonai-widget-marketplace'));
-app.use('/api/gap-nonai-customization-versioning', require('./routes/gap-nonai-customization-versioning'));
-app.use('/api/gap-nonai-render-endpoint', require('./routes/gap-nonai-render-endpoint'));
-app.use('/api/gap-nonai-analytics-events', require('./routes/gap-nonai-analytics-events'));
-app.use('/api/gap-nonai-theme-toggle', require('./routes/gap-nonai-theme-toggle'));
-app.use('/api/cf-fda-loop', require('./routes/cf-fda-loop'));
-app.use('/api/cf-primitives-marketplace', require('./routes/cf-primitives-marketplace'));
-app.use('/api/cf-cross-app-portable', require('./routes/cf-cross-app-portable'));
-app.use('/api/cf-live-spec-compile', require('./routes/cf-live-spec-compile'));
-app.use('/api/cf-a11y-by-construction', require('./routes/cf-a11y-by-construction'));
-
-// Custom Views (DSI) — must be mounted BEFORE 404 / error handler.
-app.use('/api/custom-views', require('./routes/customViews'));
-app.use('/api/adaptation-conflict', require('./routes/adaptationConflict'));
-
-app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'dynamic-software-interfaces' }));
-
-app.use((req, res, next) => {
-  if (res.headersSent) return next();
-  res.status(404).json({ error: 'Not Found', path: req.path });
+app.get('/api/health', async (_req, res) => {
+  try { await pool.query('SELECT 1'); res.json({ status: 'ready' }); }
+  catch { res.status(503).json({ status: 'unavailable' }); }
+});
+app.use('/api', verifyToken);
+app.use('/api/connectors', require('./routes/connectors'));
+app.use('/api/jobs', require('./routes/jobs'));
+app.use('/api/evaluations', require('./routes/evaluations'));
+if (process.env.NODE_ENV === 'production') {
+  const frontend = process.env.FRONTEND_DIST || path.join(__dirname, '../frontend/dist');
+  app.use(express.static(frontend, { index: false, maxAge: '1h' }));
+  app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(frontend, 'index.html')));
+}
+app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
+app.use((error, _req, res, _next) => {
+  const status = Number(error.status) || (error.name === 'ZodError' ? 400 : 500);
+  if (status >= 500) console.error(error);
+  res.status(status).json({ error: status >= 500 ? 'Internal service error' : error.message });
 });
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: err.message });
-});
-
-const PORT = process.env.PORT || 3007;
-app.listen(PORT, () => console.log(`DynamicUI Studio backend running on port ${PORT}`));
+if (require.main === module) {
+  const port = Number(process.env.BACKEND_PORT);
+  const host = process.env.BACKEND_HOST;
+  if (!Number.isInteger(port) || port < 1024 || port > 65535 || host !== '127.0.0.1') throw new Error('BACKEND_PORT and BACKEND_HOST=127.0.0.1 are required');
+  app.listen(port, host, () => console.log(`Dynamic UI platform listening on http://${host}:${port}`));
+}
+module.exports = app;

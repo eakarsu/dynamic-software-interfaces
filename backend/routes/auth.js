@@ -1,25 +1,21 @@
 const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const pool = require('../db');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, signSession, COOKIE } = require('../middleware/auth');
+const router = express.Router();
 
-router.post('/login', async (req, res) => {
+router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (!result.rows.length) return res.status(401).json({ error: 'Invalid credentials' });
+    const email = String(req.body?.email || '').trim().toLowerCase(); const password = String(req.body?.password || ''); const tenant = String(req.body?.tenant || '').trim().toLowerCase();
+    if (!email || !tenant || !password || password.length > 200) return res.status(400).json({ error: 'Tenant, email, and password are required' });
+    const result = await pool.query(`SELECT u.id,u.tenant_id,u.email,u.password_hash,u.name,u.role FROM users u JOIN tenants t ON t.id=u.tenant_id
+      WHERE u.email=$1 AND t.slug=$2 AND u.active=TRUE AND t.active=TRUE`, [email,tenant]);
+    if (!result.rows[0] || !await bcrypt.compare(password, result.rows[0].password_hash)) return res.status(401).json({ error: 'Invalid credentials' });
     const user = result.rows[0];
-    if (!await bcrypt.compare(password, user.password_hash)) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.cookie(COOKIE, signSession(user), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 8 * 60 * 60 * 1000 });
+    res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role } });
+  } catch (error) { next(error); }
 });
-
-router.get('/me', verifyToken, async (req, res) => {
-  const r = await pool.query('SELECT id,email,name,role FROM users WHERE id=$1', [req.user.id]);
-  res.json(r.rows[0]);
-});
-
+router.post('/logout', (_req, res) => { res.clearCookie(COOKIE, { path: '/', sameSite: 'strict', secure: process.env.NODE_ENV === 'production' }); res.json({ ok: true }); });
+router.get('/me', verifyToken, (req, res) => res.json({ user: req.user }));
 module.exports = router;

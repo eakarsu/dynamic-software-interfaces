@@ -1,102 +1,46 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import UIUsersPage from './pages/UIUsersPage';
-import TemplatesPage from './pages/TemplatesPage';
-import WidgetsPage from './pages/WidgetsPage';
-import SessionsPage from './pages/SessionsPage';
-import CustomizationsPage from './pages/CustomizationsPage';
-import FeedbackPage from './pages/FeedbackPage';
-import AICenter from './components/AICenter';
-import UtilityPage from './pages/UtilityPage';
-import SampleDataPage from './pages/SampleDataPage';
-import IntentGraphPage from './pages/IntentGraphPage';
-import ComponentRegistryPage from './pages/ComponentRegistryPage';
-import LayoutVariantsPage from './pages/LayoutVariantsPage';
-import UIGenerationRunsPage from './pages/UIGenerationRunsPage';
-import IntentClassifierPage from './pages/IntentClassifierPage';
-import DesignTokensPage from './pages/DesignTokensPage';
-import CustomViewsPage from './pages/CustomViewsPage';
+import { FormEvent, useEffect, useState } from 'react';
+import { api } from './api';
 
-import GapFeedbackClustering from './pages/GapFeedbackClustering';
-import GapSessionReplaySummarizer from './pages/GapSessionReplaySummarizer';
-import GapAgentCustomizer from './pages/GapAgentCustomizer';
-import GapScreenshotExtractor from './pages/GapScreenshotExtractor';
-import GapI18nTranslator from './pages/GapI18nTranslator';
-import GapMultiAppWorkspace from './pages/GapMultiAppWorkspace';
-import GapWidgetMarketplace from './pages/GapWidgetMarketplace';
-import GapCustomizationVersioning from './pages/GapCustomizationVersioning';
-import GapRenderEndpoint from './pages/GapRenderEndpoint';
-import GapAnalyticsEvents from './pages/GapAnalyticsEvents';
-import GapThemeToggle from './pages/GapThemeToggle';
-import CfFdaLoop from './pages/CfFdaLoop';
-import CfPrimitivesMarketplace from './pages/CfPrimitivesMarketplace';
-import CfCrossAppPortable from './pages/CfCrossAppPortable';
-import CfLiveSpecCompile from './pages/CfLiveSpecCompile';
-import CfA11yByConstruction from './pages/CfA11yByConstruction';
+type User={id:string;email:string;name:string;role:'member'|'reviewer'|'tenant_admin'};
+type Connector={id:string;name:string;base_url:string;status:string;document_count:number;freshness_seconds:number|null;last_error?:string};
+type Job={id:string;created_by:string;status:string;input:{intent:string;audience:string};output?:unknown;error?:string;latency_ms?:number;actual_cost_usd?:string;review_note?:string};
+type EvalCase={id:string;name:string};type EvalRun={id:string;status:string;pass_rate?:string;grounded_score?:string;safety_pass_rate?:string};
 
-import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
-import CodexOperationsFeature from './pages/CodexOperationsFeature';
-import AdaptationConflictPage from './pages/AdaptationConflictPage';
-
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  return localStorage.getItem('token') ? <>{children}</> : <Navigate to="/login" replace />;
+export default function App(){
+  const[user,setUser]=useState<User|null>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState('');
+  useEffect(()=>{api<{user:User}>('/auth/me').then((r)=>setUser(r.user)).catch(()=>undefined).finally(()=>setLoading(false));},[]);
+  if(loading)return <main className="center"><p>Loading…</p></main>;
+  if(!user)return <Login onLogin={setUser}/>;
+  return <Workspace user={user} onLogout={async()=>{await api('/auth/logout',{method:'POST'});setUser(null);}} globalError={error} setGlobalError={setError}/>;
 }
 
-export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
-        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+function Login({onLogin}:{onLogin:(user:User)=>void}){const[tenant,setTenant]=useState('');const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[error,setError]=useState('');
+  async function submit(event:FormEvent){event.preventDefault();setError('');try{const result=await api<{user:User}>('/auth/login',{method:'POST',body:JSON.stringify({tenant,email,password})});onLogin(result.user);}catch(reason){setError((reason as Error).message);}}
+  return <main className="center"><form className="panel login" onSubmit={submit}><h1>Dynamic UI Operations</h1><p>Sign in to a tenant-scoped workspace.</p><label>Tenant<input value={tenant} onChange={(e)=>setTenant(e.target.value)} required/></label><label>Email<input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required/></label><label>Password<input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required/></label>{error&&<p className="error">{error}</p>}<button>Sign in</button></form></main>;
+}
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/*" element={
-          <PrivateRoute>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/ui-users" element={<UIUsersPage />} />
-                <Route path="/templates" element={<TemplatesPage />} />
-                <Route path="/widgets" element={<WidgetsPage />} />
-                <Route path="/sessions" element={<SessionsPage />} />
-                <Route path="/customizations" element={<CustomizationsPage />} />
-                <Route path="/feedback" element={<FeedbackPage />} />
-                <Route path="/ai" element={<AICenter />} />
-                <Route path="/ai-plus" element={<Navigate to="/ai" replace />} />
-                <Route path="/utility" element={<UtilityPage />} />
-                <Route path="/sample-data" element={<SampleDataPage />} />
-                <Route path="/intent-graph" element={<IntentGraphPage />} />
-                <Route path="/component-registry" element={<ComponentRegistryPage />} />
-                <Route path="/layout-variants" element={<LayoutVariantsPage />} />
-                <Route path="/ui-generation-runs" element={<UIGenerationRunsPage />} />
-                <Route path="/intent-classifier" element={<IntentClassifierPage />} />
-                <Route path="/design-tokens" element={<DesignTokensPage />} />
-                <Route path="/custom-views" element={<CustomViewsPage />} />
-                <Route path="/gap/feedback-clustering" element={<GapFeedbackClustering />} />
-                <Route path="/gap/session-replay-summarizer" element={<GapSessionReplaySummarizer />} />
-                <Route path="/gap/agent-customizer" element={<GapAgentCustomizer />} />
-                <Route path="/gap/screenshot-extractor" element={<GapScreenshotExtractor />} />
-                <Route path="/gap/i18n-translator" element={<GapI18nTranslator />} />
-                <Route path="/gap/multi-app-workspace" element={<GapMultiAppWorkspace />} />
-                <Route path="/gap/widget-marketplace" element={<GapWidgetMarketplace />} />
-                <Route path="/gap/customization-versioning" element={<GapCustomizationVersioning />} />
-                <Route path="/gap/render-endpoint" element={<GapRenderEndpoint />} />
-                <Route path="/gap/analytics-events" element={<GapAnalyticsEvents />} />
-                <Route path="/gap/theme-toggle" element={<GapThemeToggle />} />
-                <Route path="/cf/fda-loop" element={<CfFdaLoop />} />
-                <Route path="/cf/primitives-marketplace" element={<CfPrimitivesMarketplace />} />
-                <Route path="/cf/cross-app-portable" element={<CfCrossAppPortable />} />
-                <Route path="/cf/live-spec-compile" element={<CfLiveSpecCompile />} />
-                <Route path="/cf/a11y-by-construction" element={<CfA11yByConstruction />} />
-                <Route path="/adaptation-conflict" element={<AdaptationConflictPage />} />
-              </Routes>
-            </Layout>
-          </PrivateRoute>
-        } />
-      </Routes>
-    </BrowserRouter>
-  );
+function Workspace({user,onLogout,globalError,setGlobalError}:{user:User;onLogout:()=>void;globalError:string;setGlobalError:(value:string)=>void}){
+  const[tab,setTab]=useState<'connectors'|'jobs'|'evaluations'>('connectors');
+  return <><header><div><strong>Dynamic UI Operations</strong><small>{user.name} · {user.role.replace('_',' ')}</small></div><nav><button className={tab==='connectors'?'active':''} onClick={()=>setTab('connectors')}>Sources</button><button className={tab==='jobs'?'active':''} onClick={()=>setTab('jobs')}>Generation jobs</button>{user.role!=='member'&&<button className={tab==='evaluations'?'active':''} onClick={()=>setTab('evaluations')}>Quality gates</button>}<button onClick={onLogout}>Sign out</button></nav></header><main className="shell">{globalError&&<p className="error">{globalError}</p>}{tab==='connectors'&&<Connectors user={user} fail={setGlobalError}/>} {tab==='jobs'&&<Jobs user={user} fail={setGlobalError}/>} {tab==='evaluations'&&<Evaluations user={user} fail={setGlobalError}/>}</main></>;
+}
+
+function Connectors({user,fail}:{user:User;fail:(value:string)=>void}){const[rows,setRows]=useState<Connector[]>([]);const[name,setName]=useState('');const[baseUrl,setBaseUrl]=useState('');const[secret,setSecret]=useState('');
+  async function load(){try{setRows((await api<{connectors:Connector[]}>('/connectors')).connectors);}catch(e){fail((e as Error).message);}}useEffect(()=>{void load();},[]);
+  async function create(event:FormEvent){event.preventDefault();try{await api('/connectors',{method:'POST',body:JSON.stringify({name,baseUrl,secret})});setName('');setBaseUrl('');setSecret('');await load();}catch(e){fail((e as Error).message);}}
+  async function sync(id:string){try{await api(`/connectors/${id}/sync`,{method:'POST',headers:{'idempotency-key':crypto.randomUUID()}});await load();}catch(e){fail((e as Error).message);}}
+  return <section><h1>Permission-aware sources</h1><p>Incremental connectors preserve source ACLs, versions, deletion tombstones, and freshness.</p>{user.role==='tenant_admin'&&<form className="panel grid" onSubmit={create}><label>Name<input value={name} onChange={(e)=>setName(e.target.value)} required/></label><label>HTTPS base URL<input type="url" value={baseUrl} onChange={(e)=>setBaseUrl(e.target.value)} required/></label><label>API secret<input type="password" value={secret} minLength={12} onChange={(e)=>setSecret(e.target.value)} required/></label><button>Add connector</button></form>}<div className="cards">{rows.map((row)=><article className="panel" key={row.id}><h2>{row.name}</h2><p><span className={`status ${row.status}`}>{row.status}</span> · {row.document_count} visible index records</p><p>Freshness: {row.freshness_seconds==null?'never synced':`${row.freshness_seconds}s ago`}</p>{row.last_error&&<p className="error">{row.last_error}</p>}{user.role!=='member'&&row.status!=='disabled'&&<button onClick={()=>sync(row.id)}>Queue incremental sync</button>}</article>)}</div></section>;
+}
+
+function Jobs({user,fail}:{user:User;fail:(value:string)=>void}){const[rows,setRows]=useState<Job[]>([]);const[intent,setIntent]=useState('');const[audience,setAudience]=useState('');const[constraints,setConstraints]=useState('');
+  async function load(){try{setRows((await api<{jobs:Job[]}>('/jobs')).jobs);}catch(e){fail((e as Error).message);}}useEffect(()=>{void load();const timer=setInterval(()=>void load(),5000);return()=>clearInterval(timer);},[]);
+  async function create(event:FormEvent){event.preventDefault();try{await api('/jobs',{method:'POST',headers:{'idempotency-key':crypto.randomUUID()},body:JSON.stringify({tool:'grounded_interface_proposal',input:{intent,audience,constraints:constraints.split('\n').filter(Boolean)},timeoutMs:20000,costBudgetUsd:.25,latencyBudgetMs:15000})});setIntent('');setAudience('');setConstraints('');await load();}catch(e){fail((e as Error).message);}}
+  async function review(id:string,decision:'approved'|'rejected'){const note=prompt(`Reason for ${decision}`);if(!note)return;try{await api(`/jobs/${id}/review`,{method:'POST',body:JSON.stringify({decision,note})});await load();}catch(e){fail((e as Error).message);}}
+  return <section><h1>Grounded generation jobs</h1><p>Typed output runs in the worker with source freshness, ACL, cost, latency, safety, and grounding gates.</p><form className="panel grid" onSubmit={create}><label>Intent<textarea value={intent} onChange={(e)=>setIntent(e.target.value)} required/></label><label>Audience<input value={audience} onChange={(e)=>setAudience(e.target.value)} required/></label><label>Constraints (one per line)<textarea value={constraints} onChange={(e)=>setConstraints(e.target.value)}/></label><button>Queue proposal</button></form><div className="cards">{rows.map((job)=><article className="panel" key={job.id}><h2>{job.input.intent}</h2><p><span className={`status ${job.status}`}>{job.status}</span>{job.latency_ms&&` · ${job.latency_ms}ms · $${Number(job.actual_cost_usd).toFixed(4)}`}</p>{job.error&&<p className="error">{job.error}</p>}{job.output!==undefined&&<details><summary>Schema-validated output</summary><pre>{JSON.stringify(job.output,null,2)}</pre></details>}{job.status==='awaiting_approval'&&user.role!=='member'&&job.created_by!==user.id&&<div className="actions"><button onClick={()=>review(job.id,'approved')}>Approve</button><button className="danger" onClick={()=>review(job.id,'rejected')}>Reject</button></div>}</article>)}</div></section>;
+}
+
+function Evaluations({user,fail}:{user:User;fail:(value:string)=>void}){const[cases,setCases]=useState<EvalCase[]>([]);const[runs,setRuns]=useState<EvalRun[]>([]);const[name,setName]=useState('');
+  async function load(){try{const result=await api<{cases:EvalCase[];runs:EvalRun[]}>('/evaluations');setCases(result.cases);setRuns(result.runs);}catch(e){fail((e as Error).message);}}useEffect(()=>{void load();},[]);
+  async function addCase(event:FormEvent){event.preventDefault();try{await api('/evaluations/cases',{method:'POST',body:JSON.stringify({name,input:{intent:'Design an incident triage interface',audience:'on-call engineers',constraints:['keyboard accessible']},expectedPrimitives:['data-table','alert'],minGroundedScore:1})});setName('');await load();}catch(e){fail((e as Error).message);}}
+  async function run(){try{await api('/evaluations/runs',{method:'POST',body:JSON.stringify({gates:{minPassRate:.9,minGroundedScore:1,minSafetyPassRate:1,maxAverageLatencyMs:15000,maxTotalCostUsd:5}})});await load();}catch(e){fail((e as Error).message);}}
+  return <section><h1>Evaluation and release gates</h1><p>Datasets measure expected primitives, grounding, safety, latency, and cost before model/config changes are promoted.</p>{user.role==='tenant_admin'&&<form className="panel row" onSubmit={addCase}><label>Case name<input value={name} onChange={(e)=>setName(e.target.value)} required/></label><button>Add benchmark case</button></form>}<button disabled={!cases.length} onClick={run}>Queue evaluation run</button><div className="cards">{runs.map((item)=><article className="panel" key={item.id}><h2>{item.id.slice(0,8)}</h2><p><span className={`status ${item.status}`}>{item.status}</span></p>{item.pass_rate&&<p>Pass {Number(item.pass_rate)*100}% · grounded {Number(item.grounded_score)*100}% · safety {Number(item.safety_pass_rate)*100}%</p>}</article>)}</div></section>;
 }

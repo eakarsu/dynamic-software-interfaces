@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:17.9-alpine3.22
+    environment:
+      POSTGRES_DB: dynamic_ui
+      POSTGRES_USER: dynamic_ui
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes: [dynamic-ui-db:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U dynamic_ui -d dynamic_ui"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    build: .
+    command: ["node","backend/db/migrate.js"]
+    environment:
+      DATABASE_URL: postgresql://dynamic_ui:${POSTGRES_PASSWORD}@db:5432/dynamic_ui
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+  api:
+    build: .
+    environment: &runtime-env
+      DATABASE_URL: postgresql://dynamic_ui:${POSTGRES_PASSWORD}@db:5432/dynamic_ui
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set the HTTPS application origin}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      CONNECTOR_ENCRYPTION_KEY: ${CONNECTOR_ENCRYPTION_KEY:?Set CONNECTOR_ENCRYPTION_KEY}
+      AI_PROVIDER_URL: ${AI_PROVIDER_URL:?Set AI_PROVIDER_URL}
+      AI_PROVIDER_API_KEY: ${AI_PROVIDER_API_KEY:?Set AI_PROVIDER_API_KEY}
+      AI_PROVIDER_MODEL: ${AI_PROVIDER_MODEL:?Set AI_PROVIDER_MODEL}
+      AI_INPUT_COST_PER_MILLION: ${AI_INPUT_COST_PER_MILLION:?Set input token cost}
+      AI_OUTPUT_COST_PER_MILLION: ${AI_OUTPUT_COST_PER_MILLION:?Set output token cost}
+    ports: ["127.0.0.1:${PORT:-3007}:3007"]
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:3007/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+  worker:
+    build: .
+    command: ["node","backend/worker.js"]
+    environment: *runtime-env
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+volumes:
+  dynamic-ui-db:
