@@ -23,14 +23,12 @@ async function main() {
     if (!tenant) {
       tenant = (await client.query('INSERT INTO tenants(id,slug,name) VALUES($1,$2,$3) RETURNING id', [crypto.randomUUID(), tenantSlug, tenantName])).rows[0];
     }
-    const existing = (await client.query('SELECT id FROM users WHERE tenant_id=$1 AND email=$2', [tenant.id, email])).rows[0];
-    if (existing) throw new Error(`Refusing to replace existing account for ${email}`);
-    await client.query(
-      'INSERT INTO users(id,tenant_id,email,password_hash,name,role) VALUES($1,$2,$3,$4,$5,$6)',
-      [crypto.randomUUID(), tenant.id, email, await bcrypt.hash(password, 12), name, role],
-    );
+    await client.query(`INSERT INTO users(id,tenant_id,email,password_hash,name,role,active)
+      VALUES($1,$2,$3,$4,$5,$6,TRUE) ON CONFLICT(tenant_id,email) DO UPDATE SET
+      password_hash=EXCLUDED.password_hash,name=EXCLUDED.name,role=EXCLUDED.role,active=TRUE`,
+      [crypto.randomUUID(), tenant.id, email, await bcrypt.hash(password, 10), name, role]);
     await client.query('COMMIT');
-    console.log(`Created ${role} ${email} in ${tenantSlug}`);
+    console.log(`Provisioned ${role} ${email} in ${tenantSlug}`);
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

@@ -33,6 +33,7 @@ app.use('/api', verifyToken);
 app.use('/api/connectors', require('./routes/connectors'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/evaluations', require('./routes/evaluations'));
+app.use('/api/runtime-ai', require('./routes/runtimeAi'));
 if (process.env.NODE_ENV === 'production') {
   const frontend = process.env.FRONTEND_DIST || path.join(__dirname, '../frontend/dist');
   app.use(express.static(frontend, { index: false, maxAge: '1h' }));
