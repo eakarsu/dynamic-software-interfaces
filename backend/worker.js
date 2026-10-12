@@ -16,10 +16,11 @@ async function claim(table) {
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 }
 async function fail(table, job, error) {
-  const retry = job.attempts < job.max_attempts; const delay = Math.min(60, 2 ** job.attempts);
+  const retry = error.code!=='JOB_CANCELLED' && job.attempts < job.max_attempts; const delay = Math.min(60, 2 ** job.attempts);
   const values = [retry ? 'pending' : 'failed', delay, String(error.message || error).slice(0,4000), job.id];
   if (table === 'generation_jobs') values.push(error.code || 'UNEXPECTED');
-  await pool.query(`UPDATE ${table} SET status=$1::varchar,lease_until=NULL,next_attempt_at=NOW()+($2::text||' seconds')::interval,error=$3${table === 'generation_jobs' ? ',error_code=$5' : ''},completed_at=CASE WHEN $1::text='failed' THEN NOW() ELSE NULL END WHERE id=$4`, values);
+  if(table==='generation_jobs')values.push(job.attempts);
+  await pool.query(`UPDATE ${table} SET status=$1::varchar,lease_until=NULL,next_attempt_at=NOW()+($2::text||' seconds')::interval,error=$3${table === 'generation_jobs' ? ',error_code=$5' : ''},completed_at=CASE WHEN $1::text='failed' THEN NOW() ELSE NULL END WHERE id=$4${table==='generation_jobs'?" AND status='running' AND attempts=$6":''}`, values);
   if (table === 'sync_jobs') await pool.query(`UPDATE connectors SET status='error',last_error=$1,updated_at=NOW() WHERE id=$2`, [String(error.message || error).slice(0,4000), job.connector_id]);
 }
 async function runOnce() {

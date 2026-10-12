@@ -8,7 +8,10 @@ const outputSchema = z.object({ title: z.string().min(1).max(200), rationale: z.
   risks: z.array(z.string().max(500)).max(20) }).strict();
 
 function providerConfig() {
-  const url = process.env.AI_PROVIDER_URL; const key = process.env.AI_PROVIDER_API_KEY; const model = process.env.AI_PROVIDER_MODEL;
+  const useOpenRouter = !process.env.AI_PROVIDER_URL && Boolean(process.env.OPENROUTER_API_KEY);
+  const url = useOpenRouter ? 'https://openrouter.ai/api/v1' : process.env.AI_PROVIDER_URL;
+  const key = useOpenRouter ? process.env.OPENROUTER_API_KEY : process.env.AI_PROVIDER_API_KEY;
+  const model = useOpenRouter ? process.env.OPENROUTER_MODEL : process.env.AI_PROVIDER_MODEL;
   if (!url || !key || !model) throw Object.assign(new Error('AI provider is not configured'), { code: 'PROVIDER_NOT_CONFIGURED' });
   const parsed = new URL(url); if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') throw new Error('AI provider must use HTTPS');
   return { url: parsed, key, model };
@@ -31,7 +34,8 @@ async function retrieve(user, input) {
 }
 
 async function callProvider(input, sources, signal) {
-  const config = providerConfig(); const endpoint = new URL('/v1/chat/completions', config.url);
+  signal?.throwIfAborted();
+  const config = providerConfig(); const endpoint = config.url.hostname === 'openrouter.ai' ? new URL('https://openrouter.ai/api/v1/chat/completions') : new URL('/v1/chat/completions', config.url);
   const sourceText = sources.map((source) => `[${source.source_id}@${source.source_version}] ${source.title}\n${source.content.slice(0, 12000)}`).join('\n\n');
   const outputJsonSchema = { type: 'object', additionalProperties: false, required: ['title','rationale','components','risks'], properties: {
     title: { type: 'string' }, rationale: { type: 'string' }, risks: { type: 'array', items: { type: 'string' } },
@@ -45,7 +49,10 @@ async function callProvider(input, sources, signal) {
   const raw = await response.text(); const latencyMs = Date.now() - started;
   if (!response.ok) throw Object.assign(new Error(`AI provider returned ${response.status}`), { code: 'PROVIDER_ERROR' });
   if (raw.length > 1_000_000) throw Object.assign(new Error('AI provider response too large'), { code: 'PROVIDER_RESPONSE_TOO_LARGE' });
-  const envelope = JSON.parse(raw); const content = envelope.choices?.[0]?.message?.content;
+  signal?.throwIfAborted();
+  const envelope = JSON.parse(raw); const choice = envelope.choices?.[0];
+  if (envelope.error || choice?.message?.refusal || ['length','content_filter'].includes(choice?.finish_reason)) throw Object.assign(new Error('AI provider refused or did not finish the proposal'),{code:'INVALID_OUTPUT'});
+  const content = choice?.message?.content;
   if (typeof content !== 'string') throw Object.assign(new Error('AI provider omitted structured output'), { code: 'INVALID_OUTPUT' });
   let output; try { output = outputSchema.parse(JSON.parse(content)); } catch { throw Object.assign(new Error('AI output failed schema validation'), { code: 'INVALID_OUTPUT' }); }
   const usage = envelope.usage || {}; const inputTokens = Number(usage.prompt_tokens || 0); const outputTokens = Number(usage.completion_tokens || 0);
@@ -61,18 +68,22 @@ function evaluateOutput(output, sources) {
   return { groundedScore, safetyPassed };
 }
 
-async function executeTool({ user, input: rawInput, timeoutMs, costBudgetUsd, latencyBudgetMs }) {
+async function executeTool({ user, input: rawInput, timeoutMs, costBudgetUsd, latencyBudgetMs, signal }) {
+  signal?.throwIfAborted();
   const input = inputSchema.parse(rawInput); const sources = await retrieve(user, input); const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const cancel = () => controller.abort(signal?.reason);
+  signal?.addEventListener('abort',cancel,{once:true});
+  if(signal?.aborted)cancel();
   try {
-    const result = await callProvider(input, sources, controller.signal); const quality = evaluateOutput(result.output, sources);
+    const result = await callProvider(input, sources, controller.signal); controller.signal.throwIfAborted(); const quality = evaluateOutput(result.output, sources);
     if (!quality.safetyPassed) throw Object.assign(new Error('Safety gate rejected output'), { code: 'SAFETY_GATE_FAILED' });
     if (quality.groundedScore < 1) throw Object.assign(new Error('Grounding gate rejected unsupported evidence'), { code: 'GROUNDING_GATE_FAILED' });
     if (result.cost > costBudgetUsd) throw Object.assign(new Error('Cost budget exceeded'), { code: 'COST_BUDGET_EXCEEDED' });
     if (result.latencyMs > latencyBudgetMs) throw Object.assign(new Error('Latency budget exceeded'), { code: 'LATENCY_BUDGET_EXCEEDED' });
     return { ...result, ...quality, provenance: { model: result.model, requestId: result.requestId, usage: result.usage,
       sources: sources.map(({ source_id,source_version,content_hash,indexed_at,source_updated_at,connector_id,last_synced_at }) => ({ sourceId: source_id, sourceVersion: source_version, contentHash: content_hash, indexedAt: indexed_at, sourceUpdatedAt: source_updated_at, connectorId: connector_id, connectorSyncedAt: last_synced_at })) } };
-  } catch (error) { if (error.name === 'AbortError') throw Object.assign(new Error('Tool timeout exceeded'), { code: 'TOOL_TIMEOUT' }); throw error; }
-  finally { clearTimeout(timer); }
+  } catch (error) { if(signal?.aborted)throw Object.assign(new Error('Generation job cancelled'),{code:'JOB_CANCELLED'}); if (error.name === 'AbortError') throw Object.assign(new Error('Tool timeout exceeded'), { code: 'TOOL_TIMEOUT' }); throw error; }
+  finally { clearTimeout(timer); signal?.removeEventListener('abort',cancel); }
 }
 module.exports = { executeTool, inputSchema, outputSchema, evaluateOutput, primitives };

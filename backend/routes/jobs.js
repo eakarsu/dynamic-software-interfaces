@@ -45,6 +45,24 @@ router.get('/:id', async (req,res,next)=>{
   }catch(error){next(error);}
 });
 
+router.post('/:id/cancel',async(req,res,next)=>{
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const selected=await client.query('SELECT * FROM generation_jobs WHERE id=$1 AND tenant_id=$2 FOR UPDATE',[req.params.id,req.user.tenant_id]);
+    const job=selected.rows[0];
+    if(!job){await client.query('ROLLBACK');return res.status(404).json({error:'Job not found'});}
+    if(job.created_by!==req.user.id&&req.user.role!=='tenant_admin'){await client.query('ROLLBACK');return res.status(403).json({error:'Only the requester or tenant administrator can cancel this job'});}
+    if(job.error_code==='JOB_CANCELLED'){await client.query('COMMIT');return res.json({job});}
+    if(!['pending','running','awaiting_approval'].includes(job.status)){await client.query('ROLLBACK');return res.status(409).json({error:'This terminal job cannot be cancelled'});}
+    // Keep the existing database status contract. A distinct terminal error code
+    // prevents retry while retaining the immutable generated/evidence audit.
+    const updated=await client.query("UPDATE generation_jobs SET status='failed',error_code='JOB_CANCELLED',error='Cancelled by the operator; retained output is not approved.',lease_until=NULL,completed_at=NOW() WHERE id=$1 AND tenant_id=$2 RETURNING *",[job.id,req.user.tenant_id]);
+    await audit(client,{tenantId:req.user.tenant_id,actorId:req.user.id,action:'generation.cancelled',targetType:'generation_job',targetId:job.id,details:{previousStatus:job.status}});
+    await client.query('COMMIT');res.json({job:updated.rows[0]});
+  }catch(error){await client.query('ROLLBACK');next(error);}finally{client.release();}
+});
+
 router.post('/:id/review',requireRole('reviewer','tenant_admin'),async(req,res,next)=>{
   const decision=z.object({decision:z.enum(['approved','rejected']),note:z.string().min(3).max(2000)}).parse(req.body); const client=await pool.connect();
   try{await client.query('BEGIN');const selected=await client.query(`SELECT * FROM generation_jobs WHERE id=$1 AND tenant_id=$2 FOR UPDATE`,[req.params.id,req.user.tenant_id]);const job=selected.rows[0];
